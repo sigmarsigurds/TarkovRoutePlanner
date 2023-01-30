@@ -191,24 +191,29 @@ func printMarkerTitles(mapData textbox) {
 
 func getLocationByTitle(mapData textbox, title string) [][]float64 {
 	var positions [][]float64
+	var count int
 	for _, item := range mapData.Markers {
-		if item.Popup.Title == title {
+		if strings.Contains(item.Popup.Title, title) {
 			positions = append(positions, item.Position)
+			count++
 		}
 	}
+	fmt.Printf("number of found markers: %d\n", count)
 	return positions
 }
 
 func main() {
 	//crawler()
-	//getBaseMap(woods)
+	getBaseMap(woods)
 	mapData := getMapData()
-	//printMarkerTitles(mapData)
-	locations := getLocationByTitle(mapData, "PMC Spawn")
-	for _, location := range locations {
+	printMarkerTitles(mapData)
+	spawnLocations := getLocationByTitle(mapData, "PMC Spawn")
+	stashLocations := getLocationByTitle(mapData, "Stash")
+	for _, location := range spawnLocations {
 		fmt.Printf("%v\n", location)
 	}
-	drawLine("Customs_Interactive_Map.png")
+	//drawLineGG("Woods_Interactive_Map.png", locations)
+	chartMap("Woods_Interactive_Map.png", spawnLocations[0], stashLocations)
 
 	//fmt.Printf("Categories: %v, Description: %s", mapData.Categories, mapData.PageCategories)
 
