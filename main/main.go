@@ -11,30 +11,6 @@ import (
 	"strings"
 )
 
-/*
-	type textbox struct {
-		MapImage            string        `json:"mapImage"`
-		PageCategories      []interface{} `json:"pageCategories"`
-		DefaultSort         string        `json:"defaultSort"`
-		Description         string        `json:"description"`
-		CoordinateOrder     string        `json:"coordinateOrder"`
-		MapBounds           [][]int       `json:"mapBounds"`
-		Origin              string        `json:"origin"`
-		UseMarkerClustering bool          `json:"useMarkerClustering"`
-		Categories          []struct {
-			Id          string `json:"id"`
-			ListId      int    `json:"listId"`
-			Name        string `json:"name"`
-			Color       string `json:"color"`
-			Symbol      string `json:"symbol"`
-			SymbolColor string `json:"symbolColor"`
-			Icon        string `json:"icon"`
-		} `json:"categories"`
-		Markers []struct {
-		}
-	}
-*/
-
 type categories struct {
 	Id          string `json:"id"`
 	ListId      int    `json:"listId"`
@@ -62,6 +38,7 @@ type marker struct {
 	} `json:"config,omitempty"`
 	Id string `json:"id"`
 }
+
 type textbox struct {
 	MapImage            string        `json:"mapImage"`
 	PageCategories      []interface{} `json:"pageCategories"`
@@ -158,7 +135,7 @@ func downloadImage(imageName string, imageURL string) error {
 }
 
 func getMapData() textbox {
-	baseString := "https://escapefromtarkov.fandom.com/wiki/Map:Customs_Interactive_Map?action=edit"
+	baseString := "https://escapefromtarkov.fandom.com/wiki/Map:Woods_Interactive_Map?action=edit"
 
 	resp, err := http.Get(baseString)
 	if err != nil {
@@ -193,8 +170,34 @@ func getLocationByTitle(mapData textbox, title string) [][]float64 {
 	var positions [][]float64
 	var count int
 	for _, item := range mapData.Markers {
-		if strings.Contains(item.Popup.Title, title) {
+		if strings.Contains(strings.ToLower(item.Popup.Title), strings.ToLower(title)) {
 			positions = append(positions, item.Position)
+			count++
+		}
+	}
+	fmt.Printf("number of found markers: %d\n", count)
+	return positions
+}
+
+func getLocationByCategoryId(mapData textbox, categoryName string) [][]float64 {
+	var positions [][]float64
+	var count int
+	var categoryID string
+
+	// get category ID by name
+	for _, category := range mapData.Categories {
+		if category.Name == categoryName {
+			categoryID = category.Id
+			fmt.Println("Category ID: ", categoryID)
+			break
+		}
+	}
+
+	// find markers with that category ID
+	for _, locationMarker := range mapData.Markers {
+		if locationMarker.CategoryId == categoryID {
+			positions = append(positions, locationMarker.Position)
+			fmt.Println(locationMarker.Popup.Title)
 			count++
 		}
 	}
@@ -204,16 +207,24 @@ func getLocationByTitle(mapData textbox, title string) [][]float64 {
 
 func main() {
 	//crawler()
+	mapName := "woods"
+	const numberOfStashes = 3
 	getBaseMap(woods)
 	mapData := getMapData()
-	printMarkerTitles(mapData)
+	//printMarkerTitles(mapData)
+
+	// extract data
 	spawnLocations := getLocationByTitle(mapData, "PMC Spawn")
 	stashLocations := getLocationByTitle(mapData, "Stash")
-	for _, location := range spawnLocations {
+	exitLocationsPMC := getLocationByCategoryId(mapData, "PMC Extract")
+	exitLocationsShared := getLocationByCategoryId(mapData, "Shared Extract")
+	allExitLocationsPMC := append(exitLocationsShared, exitLocationsPMC...)
+
+	for _, location := range allExitLocationsPMC {
 		fmt.Printf("%v\n", location)
 	}
-	//drawLineGG("Woods_Interactive_Map.png", locations)
-	chartMap("Woods_Interactive_Map.png", spawnLocations[0], stashLocations)
+	fileName := strings.ToTitle(mapName) + "_Interactive_Map.png"
+	chartMap(fileName, spawnLocations[0], allExitLocationsPMC, stashLocations, mapData.MapBounds, numberOfStashes)
 
 	//fmt.Printf("Categories: %v, Description: %s", mapData.Categories, mapData.PageCategories)
 
